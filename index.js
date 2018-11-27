@@ -4,6 +4,7 @@ const path = require('path')
 const fs = require('fs')
 const { EventEmitter } = require('events')
 const DailiesDB = require('@lejeunerenard/dailies-db')
+const bb = require('braille-binary')
 
 class DailiesServer extends EventEmitter {
   constructor () {
@@ -44,6 +45,20 @@ class DailiesServer extends EventEmitter {
               .on('close', () => {
                 this.emit('download', `latest/${mediaIndex}`)
               })
+          }
+        })
+      } else if (uri === '/latest/index-id') {
+        this.db.list().then((dailies) => {
+          dailies = dailies.sort((a, b) => (new Date(b.date)) - (new Date(a.date)))
+          let index = dailies[0].dailyIndex
+          if (!index) {
+            res.writeHead(404, { 'Content-Type': 'text/plain' })
+            res.write('404 Not Found')
+            res.end()
+          } else {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.write(JSON.stringify(bb(index) + '|'))
+            res.end()
           }
         })
       } else {

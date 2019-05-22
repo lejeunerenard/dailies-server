@@ -1,6 +1,5 @@
 const url = require('url')
 const http = require('http')
-const path = require('path')
 const fs = require('fs')
 const { EventEmitter } = require('events')
 const bb = require('braille-binary')

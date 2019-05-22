@@ -30,3 +30,7 @@ or influencers, posting to Instagram everyday means downloading the image and
 caption to your phone which can take a while. Airdrop is a great way to get
 files from your computer to your phone, but it takes to long and you might not
 have a Mac in the first place. Enter Dailies Server.
+
+## References
+
+- [@lejeunerenard/dailies-db-json](https://github.com/lejeunerenard/dailies-db-json)

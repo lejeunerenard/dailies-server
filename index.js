@@ -1,14 +1,9 @@
 const url = require('url')
 const http = require('http')
-const fs = require('fs')
 const { EventEmitter } = require('events')
-const bb = require('braille-binary')
 
-function respondNotFound (res) {
-  res.writeHead(404, { 'Content-Type': 'text/plain' })
-  res.write('404 Not Found')
-  res.end()
-}
+const latestMedia = require('./routes/latest-media')
+const latestMediaDownload = require('./routes/latest-media-download')
 
 class DailiesServer extends EventEmitter {
   constructor (db) {
@@ -17,50 +12,34 @@ class DailiesServer extends EventEmitter {
     super()
 
     this.db = db
+
+    // Routes
+    let defaultRoutes = [
+      latestMedia,
+      latestMediaDownload
+    ]
+    this.routes = defaultRoutes
+  }
+
+  use (route) {
+    this.routes.push(route)
+  }
+
+  run () {
     this.server = http.createServer((req, res) => {
       let uri = url.parse(req.url).pathname
 
       console.log('uri', uri)
-      if (uri === '/latest/media') {
-        this.db.latest().then((daily) => {
-          let media = daily.media
-          if (!(media && media.length)) {
-            respondNotFound(res)
-          } else {
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.write(JSON.stringify(media.length))
-            res.end()
-          }
-        })
-      } else if (uri.match(/\/latest\/media\/(\d+)/)) {
-        let mediaIndex = uri.match(/\/latest\/media\/(\d+)/)[1]
-        this.db.latest().then((daily) => {
-          let media = daily.media
-          if (!(media && media.length)) {
-            respondNotFound(res)
-          } else {
-            // Only return the requested version
-            fs.createReadStream(this.db.getDailyMedia(daily, mediaIndex))
-              .pipe(res)
-              .on('close', () => {
-                this.emit('download', `latest/${mediaIndex}`)
-              })
-          }
-        })
-      } else if (uri === '/latest/index-id') {
-        this.db.latest().then((daily) => {
-          let index = daily.dailyIndex
-          if (!index) {
-            respondNotFound(res)
-          } else {
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.write(JSON.stringify(bb(index) + '|'))
-            res.end()
-          }
-        })
-      } else {
-        respondNotFound(res)
+      for (let route of this.routes) {
+        if (route.check(uri)) {
+          route.respond.bind(this)(uri, req, res)
+          return
+        }
       }
+
+      res.writeHead(404, { 'Content-Type': 'text/plain' })
+      res.write('404 Not Found')
+      res.end()
     }).listen(process.env.PORT || 8000)
   }
 

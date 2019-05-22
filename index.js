@@ -3,21 +3,22 @@ const http = require('http')
 const path = require('path')
 const fs = require('fs')
 const { EventEmitter } = require('events')
-const DailiesDB = require('@lejeunerenard/dailies-db')
 const bb = require('braille-binary')
 
 class DailiesServer extends EventEmitter {
-  constructor () {
+  constructor (db) {
+    if (!db) throw Error('DailiesServer : No Database provided')
+
     super()
-    this.db = new DailiesDB()
+
+    this.db = db
     this.server = http.createServer((req, res) => {
       let uri = url.parse(req.url).pathname
 
       console.log('uri', uri)
       if (uri === '/latest/media') {
-        this.db.list().then((dailies) => {
-          dailies = dailies.sort((a, b) => (new Date(b.date)) - (new Date(a.date)))
-          let media = dailies[0].media
+        this.db.latest().then((daily) => {
+          let media = daily.media
           if (!(media && media.length)) {
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.write('404 Not Found')
@@ -30,17 +31,15 @@ class DailiesServer extends EventEmitter {
         })
       } else if (uri.match(/\/latest\/media\/(\d+)/)) {
         let mediaIndex = uri.match(/\/latest\/media\/(\d+)/)[1]
-        console.log('mediaIndex', mediaIndex)
-        this.db.list().then((dailies) => {
-          dailies = dailies.sort((a, b) => (new Date(b.date)) - (new Date(a.date)))
-          let media = dailies[0].media
+        this.db.latest().then((daily) => {
+          let media = daily.media
           if (!(media && media.length)) {
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.write('404 Not Found')
             res.end()
           } else {
             // Only return the requested version
-            fs.createReadStream(media[mediaIndex])
+            fs.createReadStream(this.db.getDailyMedia(daily, mediaIndex))
               .pipe(res)
               .on('close', () => {
                 this.emit('download', `latest/${mediaIndex}`)
@@ -48,9 +47,8 @@ class DailiesServer extends EventEmitter {
           }
         })
       } else if (uri === '/latest/index-id') {
-        this.db.list().then((dailies) => {
-          dailies = dailies.sort((a, b) => (new Date(b.date)) - (new Date(a.date)))
-          let index = dailies[0].dailyIndex
+        this.db.latest().then((daily) => {
+          let index = daily.dailyIndex
           if (!index) {
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.write('404 Not Found')

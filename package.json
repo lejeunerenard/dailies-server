@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "Sean Zellmer <sean@lejeunerenard.com> (http://lejeunerenard.com/)",
   "license": "MIT",
-  "dependencies": {
+  "devDependencies": {
     "braille-binary": "^1.0.0"
   }
 }
